@@ -245,3 +245,241 @@ class TestEndToEndFlow:
             "decision": "approve",
         })
         assert res.status_code == 400
+
+
+class TestConditionBranchAPI:
+    """Test condition branch routing through API - leave scenario."""
+
+    def _setup_leave_process(self):
+        proc = {
+            "name": "leave-with-condition",
+            "definition_json": {
+                "nodes": [
+                    {"id": "start", "type": "start", "assignee": None},
+                    {"id": "dept_mgr", "type": "approval", "assignee": "manager"},
+                    {"id": "check_days", "type": "condition", "assignee": None},
+                    {"id": "gm_approval", "type": "approval", "assignee": "gm"},
+                    {"id": "end", "type": "end", "assignee": None},
+                ],
+                "edges": [
+                    {"source": "start", "target": "dept_mgr"},
+                    {"source": "dept_mgr", "target": "check_days"},
+                    {"source": "check_days", "target": "gm_approval", "condition": "days > 3"},
+                    {"source": "check_days", "target": "end"},
+                    {"source": "gm_approval", "target": "end"},
+                ],
+            },
+        }
+        res = client.post("/api/processes/definitions", json=proc)
+        assert res.status_code == 200
+        return res.json()
+
+    def test_days_gt_3_routes_to_gm(self):
+        proc = self._setup_leave_process()
+        start_res = client.post("/api/processes/start", json={
+            "process_definition_id": proc["id"],
+            "form_data": {"name": "张三", "days": 5},
+        })
+        instance = start_res.json()
+        assert instance["current_node_id"] == "dept_mgr"
+
+        approve_res = client.post("/api/processes/approve", json={
+            "process_instance_id": instance["id"],
+            "assignee": "manager",
+            "decision": "approve",
+        })
+        result = approve_res.json()
+        assert result["current_node_id"] == "gm_approval"
+        assert result["status"] == "running"
+
+        final_res = client.post("/api/processes/approve", json={
+            "process_instance_id": result["id"],
+            "assignee": "gm",
+            "decision": "approve",
+        })
+        final = final_res.json()
+        assert final["status"] == "completed"
+        assert final["current_node_id"] == "end"
+
+    def test_days_le_3_ends_directly(self):
+        proc = self._setup_leave_process()
+        start_res = client.post("/api/processes/start", json={
+            "process_definition_id": proc["id"],
+            "form_data": {"name": "李四", "days": 2},
+        })
+        instance = start_res.json()
+        assert instance["current_node_id"] == "dept_mgr"
+
+        approve_res = client.post("/api/processes/approve", json={
+            "process_instance_id": instance["id"],
+            "assignee": "manager",
+            "decision": "approve",
+        })
+        result = approve_res.json()
+        assert result["current_node_id"] == "end"
+        assert result["status"] == "completed"
+
+
+class TestReturnAndResubmitAPI:
+    """Test return to initiator and resubmit flow."""
+
+    def _setup_process(self):
+        proc = {
+            "name": "return-test",
+            "definition_json": {
+                "nodes": [
+                    {"id": "start", "type": "start", "assignee": None},
+                    {"id": "review", "type": "approval", "assignee": "manager"},
+                    {"id": "end", "type": "end", "assignee": None},
+                ],
+                "edges": [
+                    {"source": "start", "target": "review"},
+                    {"source": "review", "target": "end"},
+                ],
+            },
+        }
+        res = client.post("/api/processes/definitions", json=proc)
+        return res.json()
+
+    def test_return_then_resubmit_then_approve(self):
+        proc = self._setup_process()
+
+        start_res = client.post("/api/processes/start", json={
+            "process_definition_id": proc["id"],
+            "form_data": {"name": "王五", "days": 1},
+        })
+        instance = start_res.json()
+        assert instance["status"] == "running"
+
+        # Manager returns to initiator
+        return_res = client.post("/api/processes/approve", json={
+            "process_instance_id": instance["id"],
+            "assignee": "manager",
+            "decision": "return",
+            "comment": "请修改天数",
+        })
+        returned = return_res.json()
+        assert returned["status"] == "returned"
+        assert returned["current_node_id"] == "start"
+
+        # Initiator resubmits with modified data
+        resubmit_res = client.post("/api/processes/resubmit", json={
+            "process_instance_id": instance["id"],
+            "form_data": {"name": "王五", "days": 3},
+        })
+        resubmitted = resubmit_res.json()
+        assert resubmitted["status"] == "running"
+        assert resubmitted["current_node_id"] == "review"
+
+        # Manager approves this time
+        approve_res = client.post("/api/processes/approve", json={
+            "process_instance_id": instance["id"],
+            "assignee": "manager",
+            "decision": "approve",
+        })
+        final = approve_res.json()
+        assert final["status"] == "completed"
+
+    def test_resubmit_non_returned_process_fails(self):
+        proc = self._setup_process()
+        start_res = client.post("/api/processes/start", json={
+            "process_definition_id": proc["id"],
+            "form_data": {"name": "test"},
+        })
+        instance = start_res.json()
+
+        res = client.post("/api/processes/resubmit", json={
+            "process_instance_id": instance["id"],
+            "form_data": {"name": "new"},
+        })
+        assert res.status_code == 400
+
+
+class TestApprovalRecordsAPI:
+    """Test approval history query endpoint."""
+
+    def test_get_records_after_approval(self):
+        proc = {
+            "name": "records-test",
+            "definition_json": {
+                "nodes": [
+                    {"id": "start", "type": "start", "assignee": None},
+                    {"id": "review", "type": "approval", "assignee": "manager"},
+                    {"id": "end", "type": "end", "assignee": None},
+                ],
+                "edges": [
+                    {"source": "start", "target": "review"},
+                    {"source": "review", "target": "end"},
+                ],
+            },
+        }
+        proc_res = client.post("/api/processes/definitions", json=proc)
+        proc_id = proc_res.json()["id"]
+
+        start_res = client.post("/api/processes/start", json={
+            "process_definition_id": proc_id,
+            "form_data": {"name": "test"},
+        })
+        instance = start_res.json()
+
+        client.post("/api/processes/approve", json={
+            "process_instance_id": instance["id"],
+            "assignee": "manager",
+            "decision": "approve",
+            "comment": "LGTM",
+        })
+
+        records_res = client.get(f"/api/processes/instances/{instance['id']}/records")
+        assert records_res.status_code == 200
+        records = records_res.json()
+        assert len(records) == 1
+        assert records[0]["assignee"] == "manager"
+        assert records[0]["decision"] == "approve"
+        assert records[0]["comment"] == "LGTM"
+        assert records[0]["node_id"] == "review"
+
+
+class TestNumberFieldValidation:
+    """Test min/max validation for number fields."""
+
+    def validate_field(self, value, validations):
+        for v in validations:
+            rule = v["rule"]
+            if rule == "required":
+                if not value and value != 0:
+                    return v.get("message", "此项为必填")
+                if isinstance(value, str) and value.strip() == "":
+                    return v.get("message", "此项为必填")
+            elif rule == "min":
+                num = float(value) if value is not None else 0
+                if num < v["value"]:
+                    return v.get("message", f"最小值为{v['value']}")
+            elif rule == "max":
+                num = float(value) if value is not None else 0
+                if num > v["value"]:
+                    return v.get("message", f"最大值为{v['value']}")
+        return None
+
+    def test_min_value_violation(self):
+        error = self.validate_field(0, [{"rule": "min", "value": 1, "message": "最小值为1"}])
+        assert error == "最小值为1"
+
+    def test_max_value_violation(self):
+        error = self.validate_field(100, [{"rule": "max", "value": 30, "message": "最大值为30"}])
+        assert error == "最大值为30"
+
+    def test_within_range_passes(self):
+        rules = [
+            {"rule": "min", "value": 1, "message": "最小值为1"},
+            {"rule": "max", "value": 30, "message": "最大值为30"},
+        ]
+        error = self.validate_field(5, rules)
+        assert error is None
+
+    def test_required_zero_passes(self):
+        error = self.validate_field(0, [{"rule": "required", "message": "必填"}])
+        assert error is None
+
+    def test_required_empty_string_fails(self):
+        error = self.validate_field("", [{"rule": "required", "message": "必填"}])
+        assert error == "必填"

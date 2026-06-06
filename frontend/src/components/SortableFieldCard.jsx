@@ -12,7 +12,7 @@ export default function SortableFieldCard({ field, selected, onClick, onDelete }
     transition,
   }
 
-  const typeLabels = { text: '文本框', dropdown: '下拉选择', date: '日期选择器' }
+  const typeLabels = { text: '文本框', number: '数字输入', dropdown: '下拉选择', date: '日期选择器' }
 
   return (
     <div

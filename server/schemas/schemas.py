@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from datetime import datetime
 import warnings
 
 warnings.filterwarnings("ignore", message=".*shadows an attribute.*")
@@ -40,13 +41,14 @@ class FormDefinitionResponse(BaseModel):
 
 class ProcessNode(BaseModel):
     id: str
-    type: str  # "start", "approval", "end"
+    type: str  # "start", "approval", "condition", "end"
     assignee: Optional[str] = None
 
 
 class ProcessEdge(BaseModel):
     source: str
     target: str
+    condition: Optional[str] = None
 
 
 class ProcessDefinitionSchema(BaseModel):
@@ -76,8 +78,25 @@ class StartProcessRequest(BaseModel):
 class ApprovalRequest(BaseModel):
     process_instance_id: int
     assignee: str
-    decision: str  # "approve" or "reject"
+    decision: str  # "approve", "reject", or "return"
     comment: Optional[str] = None
+
+
+class ResubmitRequest(BaseModel):
+    process_instance_id: int
+    form_data: dict
+
+
+class ApprovalRecordResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    process_instance_id: int
+    node_id: str
+    assignee: str
+    decision: Optional[str]
+    comment: Optional[str]
+    created_at: Optional[datetime] = None
 
 
 class ProcessInstanceResponse(BaseModel):

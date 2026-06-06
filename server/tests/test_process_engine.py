@@ -110,3 +110,112 @@ class TestProcessEngine:
         }
         with pytest.raises(ProcessEngineError, match="at least one end"):
             ProcessEngine(bad_def)
+
+
+class TestConditionBranch:
+    """Condition node selects edge based on form data expression."""
+
+    LEAVE_PROCESS = {
+        "nodes": [
+            {"id": "start", "type": "start", "assignee": None},
+            {"id": "dept_mgr", "type": "approval", "assignee": "manager"},
+            {"id": "check_days", "type": "condition", "assignee": None},
+            {"id": "gm_approval", "type": "approval", "assignee": "gm"},
+            {"id": "end", "type": "end", "assignee": None},
+        ],
+        "edges": [
+            {"source": "start", "target": "dept_mgr"},
+            {"source": "dept_mgr", "target": "check_days"},
+            {"source": "check_days", "target": "gm_approval", "condition": "days > 3"},
+            {"source": "check_days", "target": "end"},
+            {"source": "gm_approval", "target": "end"},
+        ],
+    }
+
+    def test_condition_routes_to_gm_when_days_gt_3(self):
+        engine = ProcessEngine(self.LEAVE_PROCESS)
+        node, status = engine.advance("check_days", form_data={"days": 5})
+        assert node == "gm_approval"
+        assert status == "running"
+
+    def test_condition_routes_to_end_when_days_le_3(self):
+        engine = ProcessEngine(self.LEAVE_PROCESS)
+        node, status = engine.advance("check_days", form_data={"days": 2})
+        assert node == "end"
+        assert status == "completed"
+
+    def test_condition_with_equal_boundary(self):
+        engine = ProcessEngine(self.LEAVE_PROCESS)
+        node, status = engine.advance("check_days", form_data={"days": 3})
+        assert node == "end"
+        assert status == "completed"
+
+    def test_full_flow_days_gt_3(self):
+        engine = ProcessEngine(self.LEAVE_PROCESS)
+        form_data = {"days": 5}
+
+        node, status = engine.advance("start", form_data=form_data)
+        assert node == "dept_mgr"
+
+        node, status = engine.advance("dept_mgr", decision="approve", form_data=form_data)
+        assert node == "gm_approval"
+        assert status == "running"
+
+        node, status = engine.advance("gm_approval", decision="approve", form_data=form_data)
+        assert node == "end"
+        assert status == "completed"
+
+    def test_full_flow_days_le_3(self):
+        engine = ProcessEngine(self.LEAVE_PROCESS)
+        form_data = {"days": 1}
+
+        node, status = engine.advance("start", form_data=form_data)
+        assert node == "dept_mgr"
+
+        node, status = engine.advance("dept_mgr", decision="approve", form_data=form_data)
+        assert node == "end"
+        assert status == "completed"
+
+    def test_condition_without_form_data_raises(self):
+        engine = ProcessEngine(self.LEAVE_PROCESS)
+        with pytest.raises(ProcessEngineError, match="requires form_data"):
+            engine.advance("check_days", form_data=None)
+
+    def test_condition_string_comparison(self):
+        definition = {
+            "nodes": [
+                {"id": "start", "type": "start", "assignee": None},
+                {"id": "branch", "type": "condition", "assignee": None},
+                {"id": "a", "type": "approval", "assignee": "admin"},
+                {"id": "end", "type": "end", "assignee": None},
+            ],
+            "edges": [
+                {"source": "start", "target": "branch"},
+                {"source": "branch", "target": "a", "condition": "dept == tech"},
+                {"source": "branch", "target": "end"},
+                {"source": "a", "target": "end"},
+            ],
+        }
+        engine = ProcessEngine(definition)
+        node, _ = engine.advance("branch", form_data={"dept": "tech"})
+        assert node == "a"
+        node, status = engine.advance("branch", form_data={"dept": "sales"})
+        assert node == "end"
+        assert status == "completed"
+
+
+class TestReturnToInitiator:
+    def test_return_decision_goes_to_start(self):
+        engine = ProcessEngine(SIMPLE_PROCESS)
+        node, status = engine.advance("approval1", decision="return")
+        assert node == "start"
+        assert status == "returned"
+
+    def test_after_return_can_advance_again(self):
+        engine = ProcessEngine(SIMPLE_PROCESS)
+        node, status = engine.advance("approval1", decision="return")
+        assert status == "returned"
+        # Simulating resubmit: advance from start again
+        node, status = engine.advance("start")
+        assert node == "approval1"
+        assert status == "running"

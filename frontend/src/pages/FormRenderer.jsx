@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 function validateField(value, validations) {
   for (const v of validations) {
     switch (v.rule) {
       case 'required':
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
+        if (!value && value !== 0 || (typeof value === 'string' && value.trim() === '')) {
           return v.message || '此项为必填'
         }
         break
@@ -19,6 +19,20 @@ function validateField(value, validations) {
           return v.message || '格式不正确'
         }
         break
+      case 'min': {
+        const num = typeof value === 'number' ? value : parseFloat(value)
+        if (!isNaN(num) && num < v.value) {
+          return v.message || `最小值为${v.value}`
+        }
+        break
+      }
+      case 'max': {
+        const num = typeof value === 'number' ? value : parseFloat(value)
+        if (!isNaN(num) && num > v.value) {
+          return v.message || `最大值为${v.value}`
+        }
+        break
+      }
     }
   }
   return null
@@ -26,6 +40,8 @@ function validateField(value, validations) {
 
 export default function FormRenderer() {
   const { formId } = useParams()
+  const [searchParams] = useSearchParams()
+  const processDefId = searchParams.get('processId') || 1
   const [schema, setSchema] = useState(null)
   const [formData, setFormData] = useState({})
   const [errors, setErrors] = useState({})
@@ -80,7 +96,7 @@ export default function FormRenderer() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        process_definition_id: 1,
+        process_definition_id: parseInt(processDefId),
         form_data: formData,
       }),
     })
@@ -138,6 +154,16 @@ export default function FormRenderer() {
                 type="date"
                 className={errors[field.fieldId] ? 'invalid' : ''}
                 value={formData[field.fieldId] || ''}
+                onChange={e => handleChange(field.fieldId, e.target.value)}
+                onBlur={() => handleBlur(field.fieldId)}
+              />
+            )}
+            {field.type === 'number' && (
+              <input
+                type="number"
+                className={errors[field.fieldId] ? 'invalid' : ''}
+                placeholder={field.placeholder}
+                value={formData[field.fieldId] ?? ''}
                 onChange={e => handleChange(field.fieldId, e.target.value)}
                 onBlur={() => handleBlur(field.fieldId)}
               />

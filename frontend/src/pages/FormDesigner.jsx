@@ -17,6 +17,7 @@ import PropertiesPanel from '../components/PropertiesPanel'
 
 const CONTROL_TYPES = [
   { type: 'text', label: '文本框' },
+  { type: 'number', label: '数字输入' },
   { type: 'dropdown', label: '下拉选择' },
   { type: 'date', label: '日期选择器' },
 ]

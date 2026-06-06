@@ -9,6 +9,8 @@ from schemas.schemas import (
     ProcessInstanceResponse,
     StartProcessRequest,
     ApprovalRequest,
+    ResubmitRequest,
+    ApprovalRecordResponse,
 )
 from engine.process_engine import ProcessEngine, ProcessEngineError
 
@@ -53,7 +55,7 @@ def start_process(req: StartProcessRequest, db: Session = Depends(get_db)):
     try:
         engine = ProcessEngine(proc_def.definition_json)
         start_node_id = engine.get_start_node_id()
-        next_node_id, status = engine.advance(start_node_id)
+        next_node_id, status = engine.advance(start_node_id, form_data=req.form_data)
     except ProcessEngineError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -81,7 +83,7 @@ def approve_process(req: ApprovalRequest, db: Session = Depends(get_db)):
     instance = db.query(ProcessInstance).filter(ProcessInstance.id == req.process_instance_id).first()
     if not instance:
         raise HTTPException(status_code=404, detail="Process instance not found")
-    if instance.status != "running":
+    if instance.status not in ("running",):
         raise HTTPException(status_code=400, detail=f"Process is not running (status: {instance.status})")
 
     proc_def = db.query(ProcessDefinition).filter(ProcessDefinition.id == instance.process_definition_id).first()
@@ -91,8 +93,13 @@ def approve_process(req: ApprovalRequest, db: Session = Depends(get_db)):
     if current_assignee and current_assignee != req.assignee:
         raise HTTPException(status_code=403, detail=f"Not authorized. Expected assignee: {current_assignee}")
 
+    form_instance = db.query(FormInstance).filter(FormInstance.id == instance.form_instance_id).first()
+    form_data = form_instance.data_json if form_instance else {}
+
     try:
-        next_node_id, status = engine.advance(instance.current_node_id, decision=req.decision)
+        next_node_id, status = engine.advance(
+            instance.current_node_id, decision=req.decision, form_data=form_data
+        )
     except ProcessEngineError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -112,9 +119,46 @@ def approve_process(req: ApprovalRequest, db: Session = Depends(get_db)):
     return instance
 
 
+@router.post("/resubmit", response_model=ProcessInstanceResponse)
+def resubmit_process(req: ResubmitRequest, db: Session = Depends(get_db)):
+    """After return-to-initiator, the initiator resubmits with updated form data."""
+    instance = db.query(ProcessInstance).filter(ProcessInstance.id == req.process_instance_id).first()
+    if not instance:
+        raise HTTPException(status_code=404, detail="Process instance not found")
+    if instance.status != "returned":
+        raise HTTPException(status_code=400, detail=f"Process is not in returned state (status: {instance.status})")
+
+    form_instance = db.query(FormInstance).filter(FormInstance.id == instance.form_instance_id).first()
+    if form_instance:
+        form_instance.data_json = req.form_data
+
+    proc_def = db.query(ProcessDefinition).filter(ProcessDefinition.id == instance.process_definition_id).first()
+    engine = ProcessEngine(proc_def.definition_json)
+
+    try:
+        start_node_id = engine.get_start_node_id()
+        next_node_id, status = engine.advance(start_node_id, form_data=req.form_data)
+    except ProcessEngineError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    instance.current_node_id = next_node_id
+    instance.status = status
+    db.commit()
+    db.refresh(instance)
+    return instance
+
+
 @router.get("/instances/{instance_id}", response_model=ProcessInstanceResponse)
 def get_process_instance(instance_id: int, db: Session = Depends(get_db)):
     instance = db.query(ProcessInstance).filter(ProcessInstance.id == instance_id).first()
     if not instance:
         raise HTTPException(status_code=404, detail="Process instance not found")
     return instance
+
+
+@router.get("/instances/{instance_id}/records", response_model=list[ApprovalRecordResponse])
+def get_approval_records(instance_id: int, db: Session = Depends(get_db)):
+    records = db.query(ApprovalRecord).filter(
+        ApprovalRecord.process_instance_id == instance_id
+    ).order_by(ApprovalRecord.created_at).all()
+    return records

@@ -12,6 +12,8 @@ export default function PropertiesPanel({ field, onUpdate }) {
 
   const hasRequired = field.validations.some(v => v.rule === 'required')
   const maxLenValidation = field.validations.find(v => v.rule === 'maxLength')
+  const minValidation = field.validations.find(v => v.rule === 'min')
+  const maxValidation = field.validations.find(v => v.rule === 'max')
 
   function toggleRequired() {
     if (hasRequired) {
@@ -31,6 +33,22 @@ export default function PropertiesPanel({ field, onUpdate }) {
 
   function updateOptions(optionsStr) {
     onUpdate({ options: optionsStr.split(',').map(s => s.trim()).filter(Boolean) })
+  }
+
+  function updateMin(value) {
+    const filtered = field.validations.filter(v => v.rule !== 'min')
+    if (value !== '') {
+      filtered.push({ rule: 'min', value: parseFloat(value), message: `最小值为${value}` })
+    }
+    onUpdate({ validations: filtered })
+  }
+
+  function updateMax(value) {
+    const filtered = field.validations.filter(v => v.rule !== 'max')
+    if (value !== '') {
+      filtered.push({ rule: 'max', value: parseFloat(value), message: `最大值为${value}` })
+    }
+    onUpdate({ validations: filtered })
   }
 
   return (
@@ -86,6 +104,27 @@ export default function PropertiesPanel({ field, onUpdate }) {
             onChange={e => updateMaxLength(e.target.value)}
           />
         </div>
+      )}
+
+      {field.type === 'number' && (
+        <>
+          <div className="prop-group">
+            <label>最小值</label>
+            <input
+              type="number"
+              value={minValidation?.value ?? ''}
+              onChange={e => updateMin(e.target.value)}
+            />
+          </div>
+          <div className="prop-group">
+            <label>最大值</label>
+            <input
+              type="number"
+              value={maxValidation?.value ?? ''}
+              onChange={e => updateMax(e.target.value)}
+            />
+          </div>
+        </>
       )}
     </div>
   )
