@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import FormDesigner from './pages/FormDesigner'
 import FormRenderer from './pages/FormRenderer'
 import ProcessStart from './pages/ProcessStart'
+import ProcessSimulator from './pages/ProcessSimulator'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<FormDesigner />} />
         <Route path="/render/:formId" element={<FormRenderer />} />
         <Route path="/process/start" element={<ProcessStart />} />
+        <Route path="/process/simulate" element={<ProcessSimulator />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

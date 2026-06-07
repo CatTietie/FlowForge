@@ -220,3 +220,432 @@ body {
   font-weight: 500;
   margin-top: 12px;
 }
+
+/* Process Simulator Styles */
+.sim-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sim-config-panel {
+  width: 360px;
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.sim-config-panel h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.sim-result-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px;
+  gap: 20px;
+}
+
+.sim-section {
+  margin-bottom: 16px;
+}
+
+.sim-section-label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.sim-toggle-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sim-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.sim-json-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+}
+
+.sim-field-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.sim-field-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.sim-btn-sm {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.sim-start-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 16px;
+}
+
+.sim-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #fff0f0;
+  border: 1px solid #ffcdd2;
+  border-radius: 4px;
+  color: #c62828;
+  font-size: 13px;
+}
+
+/* Flowchart */
+.sim-flow-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.sim-flow-section h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.sim-flowchart {
+  padding: 8px 0;
+}
+
+.sim-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 2px solid #e0e0e0;
+  background: #fafafa;
+  transition: all 0.2s;
+}
+
+.sim-node-visited {
+  border-color: #43a047;
+  background: #e8f5e9;
+  border-left-width: 4px;
+}
+
+.sim-node-current {
+  border-color: #4a7cff;
+  background: #e3f2fd;
+  box-shadow: 0 0 0 3px rgba(74, 124, 255, 0.2);
+}
+
+.sim-node-unvisited {
+  border-style: dashed;
+  border-color: #ccc;
+  background: #f9f9f9;
+  opacity: 0.7;
+}
+
+.sim-node-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.sim-node-label {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.sim-node-type {
+  font-size: 11px;
+  color: #888;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.sim-connector {
+  text-align: center;
+  color: #bbb;
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 2px 0;
+}
+
+.sim-branches {
+  margin: 4px 0 4px 24px;
+  padding-left: 12px;
+  border-left: 2px solid #e0e0e0;
+}
+
+.sim-branch-edge {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.sim-branch-arrow {
+  color: #4a7cff;
+}
+
+.sim-branch-label {
+  font-family: monospace;
+  background: #f5f5f5;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.sim-branch-target {
+  color: #999;
+  font-size: 11px;
+}
+
+/* Decision panel */
+.sim-decision-panel {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff3e0;
+  border: 1px solid #ffe0b2;
+  border-radius: 6px;
+}
+
+.sim-decision-panel p {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.sim-decision-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.sim-final-status {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sim-final-completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.sim-final-rejected {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.sim-final-returned {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+/* Step log */
+.sim-log-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.sim-step-log h4 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.sim-empty-hint {
+  color: #999;
+  font-size: 13px;
+}
+
+.sim-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-step-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  background: #fafbfc;
+}
+
+.sim-step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sim-step-index {
+  font-size: 11px;
+  color: #999;
+  font-weight: bold;
+}
+
+.sim-step-node {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sim-step-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+
+.sim-status-running { background: #e3f2fd; color: #1565c0; }
+.sim-status-completed { background: #e8f5e9; color: #2e7d32; }
+.sim-status-rejected { background: #ffebee; color: #c62828; }
+.sim-status-returned { background: #fff3e0; color: #e65100; }
+.sim-status-waiting_for_decision { background: #fff8e1; color: #f57f17; }
+
+.sim-step-details {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.sim-step-assignee {
+  color: #4a7cff;
+}
+
+.sim-step-decision {
+  font-weight: 500;
+}
+
+.sim-condition-details {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.sim-condition-title {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.sim-condition-eval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.sim-eval-true {
+  background: #e8f5e9;
+}
+
+.sim-eval-false {
+  background: #fafafa;
+}
+
+.sim-condition-eval code {
+  font-size: 12px;
+  background: #fff;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.sim-eval-breakdown {
+  color: #666;
+  font-size: 11px;
+}
+
+.sim-eval-result {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.sim-eval-true .sim-eval-result { color: #2e7d32; }
+.sim-eval-false .sim-eval-result { color: #999; }
+
+/* Coverage */
+.sim-coverage {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.sim-coverage h4 {
+  margin-bottom: 8px;
+}
+
+.sim-coverage-bar-wrapper {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.sim-coverage-bar {
+  height: 100%;
+  background: #43a047;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.sim-coverage-text {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.sim-coverage-unvisited {
+  font-size: 12px;
+  color: #888;
+}
+
+.sim-unvisited-tag {
+  display: inline-block;
+  background: #ffebee;
+  color: #c62828;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin-left: 4px;
+}

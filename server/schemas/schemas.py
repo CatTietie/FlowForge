@@ -107,3 +107,46 @@ class ProcessInstanceResponse(BaseModel):
     form_instance_id: Optional[int]
     current_node_id: str
     status: str
+
+
+# --- Simulation schemas ---
+
+class SimulationDecision(BaseModel):
+    node_id: str
+    decision: str  # "approve", "reject", "return"
+
+
+class SimulateRequest(BaseModel):
+    definition: ProcessDefinitionSchema
+    form_data: dict
+    decisions: list[SimulationDecision] = []
+    auto_approve: bool = False
+
+
+class ConditionEvalDetail(BaseModel):
+    expression: str
+    field_name: str
+    field_value: Optional[str | int | float] = None
+    compare_value: Optional[str | int | float] = None
+    operator: str
+    result: bool
+
+
+class SimulationStep(BaseModel):
+    step_index: int
+    node_id: str
+    node_type: str
+    assignee: Optional[str] = None
+    status: str  # "running", "completed", "rejected", "returned", "waiting_for_decision"
+    decision_made: Optional[str] = None
+    condition_evaluations: list[ConditionEvalDetail] = []
+    form_data: dict
+
+
+class SimulateResponse(BaseModel):
+    steps: list[SimulationStep]
+    final_status: str
+    visited_node_ids: list[str]
+    all_node_ids: list[str]
+    unvisited_node_ids: list[str]
+    coverage_percent: float

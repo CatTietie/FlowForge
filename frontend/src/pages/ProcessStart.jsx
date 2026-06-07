@@ -27,7 +27,10 @@ export default function ProcessStart() {
       {processes.length === 0 && <p style={{ color: '#999' }}>暂无流程定义</p>}
       <ul>
         {processes.map(p => (
-          <li key={p.id}>{p.name} (v{p.version})</li>
+          <li key={p.id} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span>{p.name} (v{p.version})</span>
+            <a href={`/process/simulate?id=${p.id}`} className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 10px', textDecoration: 'none' }}>模拟运行</a>
+          </li>
         ))}
       </ul>
     </div>

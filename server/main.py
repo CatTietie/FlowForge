@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from api.forms import router as forms_router
 from api.processes import router as processes_router
+from api.simulation import router as simulation_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -28,6 +29,7 @@ async def auth_middleware_hook(request: Request, call_next):
 
 app.include_router(forms_router)
 app.include_router(processes_router)
+app.include_router(simulation_router)
 
 
 @app.get("/")
