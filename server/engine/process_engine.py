@@ -141,3 +141,67 @@ class ProcessEngine:
         if node and node["type"] == "approval":
             return node.get("assignee")
         return None
+
+    def advance_with_path(
+        self,
+        current_node_id: str,
+        decision: Optional[str] = None,
+        form_data: Optional[dict] = None,
+    ) -> tuple[str, str, list[str]]:
+        """
+        Same as advance() but also returns a list of intermediate condition node IDs traversed.
+        Returns (next_node_id, new_status, condition_nodes_traversed).
+        """
+        path = []
+        result_node, result_status = self._advance_tracking(current_node_id, decision, form_data, path)
+        return result_node, result_status, path
+
+    def _advance_tracking(
+        self,
+        current_node_id: str,
+        decision: Optional[str],
+        form_data: Optional[dict],
+        path: list[str],
+    ) -> tuple[str, str]:
+        current_node = self.nodes.get(current_node_id)
+        if not current_node:
+            raise ProcessEngineError(f"Node '{current_node_id}' not found")
+
+        if current_node["type"] == "end":
+            raise ProcessEngineError("Cannot advance past end node")
+
+        if current_node["type"] == "approval":
+            if decision is None:
+                raise ProcessEngineError("Approval node requires a decision")
+            if decision == "reject":
+                return current_node_id, "rejected"
+            if decision == "return":
+                start_id = self.get_start_node_id()
+                return start_id, "returned"
+            if decision != "approve":
+                raise ProcessEngineError(f"Invalid decision: {decision}")
+
+        if current_node["type"] == "condition":
+            if form_data is None:
+                raise ProcessEngineError("Condition node requires form_data")
+            next_node_id = self._resolve_condition_branch(current_node_id, form_data)
+        else:
+            next_node_id = self.get_next_node_id(current_node_id)
+
+        if next_node_id is None:
+            raise ProcessEngineError(f"No outgoing edge from node '{current_node_id}'")
+
+        next_node = self.nodes.get(next_node_id)
+        if not next_node:
+            raise ProcessEngineError(f"Target node '{next_node_id}' not found")
+
+        if next_node["type"] == "condition":
+            if form_data is None:
+                raise ProcessEngineError("Condition node requires form_data")
+            path.append(next_node_id)
+            return self._advance_tracking(next_node_id, None, form_data, path)
+
+        if next_node["type"] == "end":
+            return next_node_id, "completed"
+
+        return next_node_id, "running"

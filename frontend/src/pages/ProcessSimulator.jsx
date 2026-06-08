@@ -161,6 +161,22 @@ export default function ProcessSimulator() {
     runSimulation([])
   }
 
+  function getApprovalNodes() {
+    if (!definition || !definition.nodes) return []
+    return definition.nodes.filter(n => n.type === 'approval')
+  }
+
+  function updateNodeSla(nodeId, value) {
+    const updated = {
+      ...definition,
+      nodes: definition.nodes.map(n =>
+        n.id === nodeId ? { ...n, sla_hours: value === '' ? undefined : parseFloat(value) } : n
+      ),
+    }
+    setDefinition(updated)
+    setJsonInput(JSON.stringify(updated, null, 2))
+  }
+
   const isFinished = finalStatus && finalStatus !== 'waiting_for_decision'
 
   return (
@@ -236,6 +252,25 @@ export default function ProcessSimulator() {
             >自动运行</button>
           </div>
         </div>
+
+        {definition && getApprovalNodes().length > 0 && (
+          <div className="sim-section">
+            <label className="sim-section-label">审批节点 SLA 配置（小时）</label>
+            {getApprovalNodes().map(node => (
+              <div key={node.id} className="sim-field-row">
+                <input value={node.id} disabled style={{ flex: '0 0 100px' }} />
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  placeholder="SLA时限"
+                  value={node.sla_hours ?? ''}
+                  onChange={e => updateNodeSla(node.id, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         <button className="btn btn-primary sim-start-btn" onClick={handleStart} disabled={running}>
           {running ? '模拟中...' : '开始模拟'}

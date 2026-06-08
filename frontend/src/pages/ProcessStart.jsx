@@ -11,7 +11,10 @@ export default function ProcessStart() {
 
   return (
     <div className="render-page">
-      <h2>发起流程</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>发起流程</h2>
+        <a href="/statistics" className="btn btn-primary">监控统计</a>
+      </div>
 
       <h3 style={{ marginTop: '16px', marginBottom: '8px' }}>已保存表单</h3>
       {forms.length === 0 && <p style={{ color: '#999' }}>暂无表单，请先在设计器中创建</p>}

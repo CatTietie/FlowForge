@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, JSON, DateTime, Text
+from sqlalchemy import Column, Integer, String, JSON, DateTime, Text, Float, Index
 from sqlalchemy.sql import func
 
 from database import Base
@@ -58,3 +58,36 @@ class ApprovalRecord(Base):
     decision = Column(String(50), nullable=True)
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class NodeTransitionLog(Base):
+    __tablename__ = "node_transition_logs"
+    __table_args__ = (
+        Index("ix_ntl_def_node_enter", "process_definition_id", "node_id", "enter_time"),
+        Index("ix_ntl_assignee_leave", "assignee", "leave_time"),
+        Index("ix_ntl_sla_leave", "sla_exceeded", "leave_time"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    process_instance_id = Column(Integer, nullable=False, index=True)
+    process_definition_id = Column(Integer, nullable=False, index=True)
+    node_id = Column(String(100), nullable=False, index=True)
+    node_type = Column(String(50), nullable=False)
+    assignee = Column(String(255), nullable=True)
+    enter_time = Column(DateTime, nullable=False, server_default=func.now())
+    leave_time = Column(DateTime, nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+    sla_hours = Column(Float, nullable=True)
+    sla_exceeded = Column(Integer, nullable=False, default=0)
+
+
+class SlaAlert(Base):
+    __tablename__ = "sla_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    process_instance_id = Column(Integer, nullable=False, index=True)
+    node_id = Column(String(100), nullable=False)
+    assignee = Column(String(255), nullable=True)
+    sla_hours = Column(Float, nullable=False)
+    exceeded_at = Column(DateTime, nullable=False, server_default=func.now())
+    notified = Column(Integer, nullable=False, default=0)

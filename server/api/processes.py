@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.models import ProcessDefinition, ProcessInstance, FormInstance, ApprovalRecord
+from models.models import ProcessDefinition, ProcessInstance, FormInstance, ApprovalRecord, NodeTransitionLog
 from schemas.schemas import (
     ProcessDefinitionCreate,
     ProcessDefinitionResponse,
@@ -13,6 +13,12 @@ from schemas.schemas import (
     ApprovalRecordResponse,
 )
 from engine.process_engine import ProcessEngine, ProcessEngineError
+from services.transition_service import (
+    open_node_log,
+    close_current_node_log,
+    open_node_log_from_definition,
+    log_condition_nodes_traversed,
+)
 
 router = APIRouter(prefix="/api/processes", tags=["processes"])
 
@@ -55,7 +61,7 @@ def start_process(req: StartProcessRequest, db: Session = Depends(get_db)):
     try:
         engine = ProcessEngine(proc_def.definition_json)
         start_node_id = engine.get_start_node_id()
-        next_node_id, status = engine.advance(start_node_id, form_data=req.form_data)
+        next_node_id, status, condition_path = engine.advance_with_path(start_node_id, form_data=req.form_data)
     except ProcessEngineError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -73,6 +79,28 @@ def start_process(req: StartProcessRequest, db: Session = Depends(get_db)):
         status=status,
     )
     db.add(process_instance)
+    db.flush()
+
+    from datetime import datetime
+    now = datetime.utcnow()
+    start_log = open_node_log(
+        db, process_instance.id, proc_def.id,
+        start_node_id, "start", None, None,
+    )
+    start_log.leave_time = now
+    start_log.duration_seconds = 0
+
+    if condition_path:
+        log_condition_nodes_traversed(
+            db, process_instance.id, proc_def.id,
+            condition_path, proc_def.definition_json,
+        )
+
+    open_node_log_from_definition(
+        db, process_instance.id, proc_def.id,
+        next_node_id, proc_def.definition_json,
+    )
+
     db.commit()
     db.refresh(process_instance)
     return process_instance
@@ -97,7 +125,7 @@ def approve_process(req: ApprovalRequest, db: Session = Depends(get_db)):
     form_data = form_instance.data_json if form_instance else {}
 
     try:
-        next_node_id, status = engine.advance(
+        next_node_id, status, condition_path = engine.advance_with_path(
             instance.current_node_id, decision=req.decision, form_data=form_data
         )
     except ProcessEngineError as e:
@@ -112,8 +140,23 @@ def approve_process(req: ApprovalRequest, db: Session = Depends(get_db)):
     )
     db.add(record)
 
+    close_current_node_log(db, instance.id)
+
+    if condition_path:
+        log_condition_nodes_traversed(
+            db, instance.id, instance.process_definition_id,
+            condition_path, proc_def.definition_json,
+        )
+
     instance.current_node_id = next_node_id
     instance.status = status
+
+    if status == "running":
+        open_node_log_from_definition(
+            db, instance.id, instance.process_definition_id,
+            next_node_id, proc_def.definition_json,
+        )
+
     db.commit()
     db.refresh(instance)
     return instance
@@ -137,12 +180,26 @@ def resubmit_process(req: ResubmitRequest, db: Session = Depends(get_db)):
 
     try:
         start_node_id = engine.get_start_node_id()
-        next_node_id, status = engine.advance(start_node_id, form_data=req.form_data)
+        next_node_id, status, condition_path = engine.advance_with_path(start_node_id, form_data=req.form_data)
     except ProcessEngineError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    close_current_node_log(db, instance.id)
+
     instance.current_node_id = next_node_id
     instance.status = status
+
+    if condition_path:
+        log_condition_nodes_traversed(
+            db, instance.id, instance.process_definition_id,
+            condition_path, proc_def.definition_json,
+        )
+
+    open_node_log_from_definition(
+        db, instance.id, instance.process_definition_id,
+        next_node_id, proc_def.definition_json,
+    )
+
     db.commit()
     db.refresh(instance)
     return instance

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 import warnings
 
 warnings.filterwarnings("ignore", message=".*shadows an attribute.*")
@@ -43,6 +43,7 @@ class ProcessNode(BaseModel):
     id: str
     type: str  # "start", "approval", "condition", "end"
     assignee: Optional[str] = None
+    sla_hours: Optional[float] = None
 
 
 class ProcessEdge(BaseModel):
@@ -150,3 +151,72 @@ class SimulateResponse(BaseModel):
     all_node_ids: list[str]
     unvisited_node_ids: list[str]
     coverage_percent: float
+
+
+# --- Statistics schemas ---
+
+class StatisticsFilter(BaseModel):
+    process_definition_id: Optional[int] = None
+    assignee: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+
+class NodeDurationStat(BaseModel):
+    node_id: str
+    avg_seconds: float
+    count: int
+
+
+class AvgDurationResponse(BaseModel):
+    overall_avg_seconds: float
+    by_node: list[NodeDurationStat]
+
+
+class NodeTimeoutStat(BaseModel):
+    node_id: str
+    total: int
+    exceeded: int
+    rate_percent: float
+
+
+class TimeoutRateResponse(BaseModel):
+    total_completed: int
+    total_exceeded: int
+    rate_percent: float
+    by_node: list[NodeTimeoutStat]
+
+
+class TrendDataPoint(BaseModel):
+    period: str
+    completed: int
+    rejected: int
+    returned: int
+    total: int
+
+
+class CompletionTrendResponse(BaseModel):
+    granularity: str
+    data_points: list[TrendDataPoint]
+
+
+class BacklogNodeStat(BaseModel):
+    node_id: str
+    assignee: Optional[str]
+    count: int
+    oldest_enter_time: Optional[datetime]
+
+
+class SlaAtRiskItem(BaseModel):
+    process_instance_id: int
+    node_id: str
+    assignee: Optional[str]
+    enter_time: Optional[datetime]
+    sla_hours: float
+    elapsed_hours: float
+
+
+class BacklogResponse(BaseModel):
+    total_pending: int
+    by_node: list[BacklogNodeStat]
+    sla_at_risk: list[SlaAtRiskItem]
