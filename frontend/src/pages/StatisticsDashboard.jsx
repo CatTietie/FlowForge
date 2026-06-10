@@ -5,8 +5,11 @@ import CompletionTrendChart from '../components/stats/CompletionTrendChart'
 import BacklogChart from '../components/stats/BacklogChart'
 import TimeoutRateChart from '../components/stats/TimeoutRateChart'
 import SlaViolationsTable from '../components/stats/SlaViolationsTable'
+import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useLocale } from '../i18n/LocaleContext'
 
 export default function StatisticsDashboard() {
+  const { t } = useLocale()
   const [definitions, setDefinitions] = useState([])
   const [filters, setFilters] = useState({
     process_definition_id: null,
@@ -65,8 +68,11 @@ export default function StatisticsDashboard() {
   return (
     <div className="stats-dashboard">
       <div className="stats-header">
-        <h2>流程监控统计</h2>
-        <a href="/process/start" className="btn btn-secondary">返回流程列表</a>
+        <h2>{t('stats.title')}</h2>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <LanguageSwitcher />
+          <a href="/process/start" className="btn btn-secondary">{t('stats.backToList')}</a>
+        </div>
       </div>
 
       <FilterBar
@@ -77,7 +83,7 @@ export default function StatisticsDashboard() {
       />
 
       {loading ? (
-        <div className="stats-loading">加载中...</div>
+        <div className="stats-loading">{t('renderer.loading')}</div>
       ) : (
         <>
           <SummaryCards

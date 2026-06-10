@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import SimulationFlowChart from '../components/SimulationFlowChart'
 import SimulationStepLog from '../components/SimulationStepLog'
+import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useLocale } from '../i18n/LocaleContext'
+import { resolveNodeName } from '../i18n/resolveI18n'
+import { SUPPORTED_LOCALES } from '../i18n/index'
 
 export default function ProcessSimulator() {
   const [searchParams] = useSearchParams()
   const preselectedId = searchParams.get('id')
+  const { t, locale } = useLocale()
 
   const [processes, setProcesses] = useState([])
   const [selectedProcId, setSelectedProcId] = useState(preselectedId || '')
@@ -13,7 +18,7 @@ export default function ProcessSimulator() {
   const [useJson, setUseJson] = useState(false)
 
   const [formFields, setFormFields] = useState([{ key: '', value: '' }])
-  const [mode, setMode] = useState('step') // 'step' | 'auto'
+  const [mode, setMode] = useState('step')
 
   const [definition, setDefinition] = useState(null)
   const [steps, setSteps] = useState([])
@@ -102,7 +107,7 @@ export default function ProcessSimulator() {
 
   async function runSimulation(extraDecisions = []) {
     if (!definition) {
-      setError('请先选择或输入流程定义')
+      setError(t('simulator.error.noDefinition') || '请先选择或输入流程定义')
       return
     }
     setError(null)
@@ -124,7 +129,7 @@ export default function ProcessSimulator() {
       })
       if (!resp.ok) {
         const err = await resp.json()
-        setError(err.detail || '模拟失败')
+        setError(err.detail || t('simulator.error.failed') || '模拟失败')
         setRunning(false)
         return
       }
@@ -144,7 +149,7 @@ export default function ProcessSimulator() {
         setWaitingNodeId(null)
       }
     } catch (e) {
-      setError('网络错误: ' + e.message)
+      setError('Network error: ' + e.message)
     }
     setRunning(false)
   }
@@ -177,31 +182,63 @@ export default function ProcessSimulator() {
     setJsonInput(JSON.stringify(updated, null, 2))
   }
 
+  function updateNodeName(nodeId, value) {
+    const updated = {
+      ...definition,
+      nodes: definition.nodes.map(n =>
+        n.id === nodeId ? { ...n, name: value || undefined } : n
+      ),
+    }
+    setDefinition(updated)
+    setJsonInput(JSON.stringify(updated, null, 2))
+  }
+
+  function updateNodeNameI18n(nodeId, localeCode, value) {
+    const updated = {
+      ...definition,
+      nodes: definition.nodes.map(n => {
+        if (n.id !== nodeId) return n
+        const i18n = { ...(n.name_i18n || {}) }
+        if (value) {
+          i18n[localeCode] = value
+        } else {
+          delete i18n[localeCode]
+        }
+        return { ...n, name_i18n: Object.keys(i18n).length > 0 ? i18n : undefined }
+      }),
+    }
+    setDefinition(updated)
+    setJsonInput(JSON.stringify(updated, null, 2))
+  }
+
   const isFinished = finalStatus && finalStatus !== 'waiting_for_decision'
 
   return (
     <div className="sim-layout">
       <div className="sim-config-panel">
-        <h2>流程模拟</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>{t('simulator.title')}</h2>
+          <LanguageSwitcher />
+        </div>
 
         <div className="sim-section">
-          <label className="sim-section-label">流程定义来源</label>
+          <label className="sim-section-label">{t('simulator.source') || '流程定义来源'}</label>
           <div className="sim-toggle-row">
             <button
               className={`btn ${!useJson ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setUseJson(false)}
-            >选择已有</button>
+            >{t('simulator.selectExisting') || '选择已有'}</button>
             <button
               className={`btn ${useJson ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setUseJson(true)}
-            >粘贴JSON</button>
+            >{t('simulator.pasteJson') || '粘贴JSON'}</button>
           </div>
         </div>
 
         {!useJson ? (
           <div className="sim-section">
             <select value={selectedProcId} onChange={handleSelectProcess} className="sim-select">
-              <option value="">-- 选择流程定义 --</option>
+              <option value="">-- {t('simulator.selectPlaceholder') || '选择流程定义'} --</option>
               {processes.map(p => (
                 <option key={p.id} value={p.id}>{p.name} (v{p.version})</option>
               ))}
@@ -220,63 +257,81 @@ export default function ProcessSimulator() {
         )}
 
         <div className="sim-section">
-          <label className="sim-section-label">虚拟表单数据</label>
+          <label className="sim-section-label">{t('simulator.formData') || '虚拟表单数据'}</label>
           {formFields.map((f, idx) => (
             <div key={idx} className="sim-field-row">
               <input
-                placeholder="字段名"
+                placeholder={t('simulator.fieldName') || '字段名'}
                 value={f.key}
                 onChange={e => updateFormField(idx, 'key', e.target.value)}
               />
               <input
-                placeholder="值"
+                placeholder={t('simulator.fieldValue') || '值'}
                 value={f.value}
                 onChange={e => updateFormField(idx, 'value', e.target.value)}
               />
               <button className="btn btn-danger sim-btn-sm" onClick={() => removeFormField(idx)}>×</button>
             </div>
           ))}
-          <button className="btn btn-secondary sim-btn-sm" onClick={addFormField}>+ 添加字段</button>
+          <button className="btn btn-secondary sim-btn-sm" onClick={addFormField}>+ {t('simulator.addField') || '添加字段'}</button>
         </div>
 
         <div className="sim-section">
-          <label className="sim-section-label">运行模式</label>
+          <label className="sim-section-label">{t('simulator.runMode') || '运行模式'}</label>
           <div className="sim-toggle-row">
             <button
               className={`btn ${mode === 'step' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setMode('step')}
-            >单步执行</button>
+            >{t('simulator.stepMode') || '单步执行'}</button>
             <button
               className={`btn ${mode === 'auto' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setMode('auto')}
-            >自动运行</button>
+            >{t('simulator.autoMode') || '自动运行'}</button>
           </div>
         </div>
 
         {definition && getApprovalNodes().length > 0 && (
           <div className="sim-section">
-            <label className="sim-section-label">审批节点 SLA 配置（小时）</label>
+            <label className="sim-section-label">{t('simulator.sla.title')}</label>
             {getApprovalNodes().map(node => (
-              <div key={node.id} className="sim-field-row">
-                <input value={node.id} disabled style={{ flex: '0 0 100px' }} />
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  placeholder="SLA时限"
-                  value={node.sla_hours ?? ''}
-                  onChange={e => updateNodeSla(node.id, e.target.value)}
-                />
+              <div key={node.id} style={{ marginBottom: '12px' }}>
+                <div className="sim-field-row">
+                  <input
+                    value={node.name || node.id}
+                    onChange={e => updateNodeName(node.id, e.target.value)}
+                    style={{ flex: '0 0 120px' }}
+                    placeholder={t('simulator.nodeName')}
+                  />
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    placeholder="SLA"
+                    value={node.sla_hours ?? ''}
+                    onChange={e => updateNodeSla(node.id, e.target.value)}
+                  />
+                </div>
+                {SUPPORTED_LOCALES.filter(l => l.code !== 'zh').map(l => (
+                  <div key={l.code} className="sim-field-row" style={{ marginTop: '4px', paddingLeft: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#888', minWidth: '50px' }}>{l.label}:</span>
+                    <input
+                      value={(node.name_i18n && node.name_i18n[l.code]) || ''}
+                      onChange={e => updateNodeNameI18n(node.id, l.code, e.target.value)}
+                      placeholder={`${t('simulator.nodeName')} (${l.label})`}
+                      style={{ fontSize: '12px' }}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
         )}
 
         <button className="btn btn-primary sim-start-btn" onClick={handleStart} disabled={running}>
-          {running ? '模拟中...' : '开始模拟'}
+          {running ? (t('simulator.running') || '模拟中...') : (t('simulator.start') || '开始模拟')}
         </button>
         {steps.length > 0 && (
-          <button className="btn btn-secondary sim-start-btn" onClick={resetSimulation}>重置</button>
+          <button className="btn btn-secondary sim-start-btn" onClick={resetSimulation}>{t('simulator.reset') || '重置'}</button>
         )}
 
         {error && <div className="sim-error">{error}</div>}
@@ -284,7 +339,7 @@ export default function ProcessSimulator() {
 
       <div className="sim-result-panel">
         <div className="sim-flow-section">
-          <h3>流程路径</h3>
+          <h3>{t('simulator.flowPath') || '流程路径'}</h3>
           <SimulationFlowChart
             definition={definition}
             steps={steps}
@@ -293,17 +348,20 @@ export default function ProcessSimulator() {
           />
           {waitingNodeId && (
             <div className="sim-decision-panel">
-              <p>节点 <strong>{waitingNodeId}</strong> 等待审批决策:</p>
+              <p>{t('simulator.waiting').replace('{nodeId}', resolveNodeName(
+                definition.nodes.find(n => n.id === waitingNodeId) || { id: waitingNodeId },
+                locale
+              ))}</p>
               <div className="sim-decision-buttons">
-                <button className="btn btn-primary" onClick={() => handleDecision('approve')}>通过</button>
-                <button className="btn btn-danger" onClick={() => handleDecision('reject')}>拒绝</button>
-                <button className="btn btn-secondary" onClick={() => handleDecision('return')}>退回</button>
+                <button className="btn btn-primary" onClick={() => handleDecision('approve')}>{t('simulator.approve')}</button>
+                <button className="btn btn-danger" onClick={() => handleDecision('reject')}>{t('simulator.reject')}</button>
+                <button className="btn btn-secondary" onClick={() => handleDecision('return')}>{t('simulator.return')}</button>
               </div>
             </div>
           )}
           {isFinished && (
             <div className={`sim-final-status sim-final-${finalStatus}`}>
-              模拟结束 — 最终状态: <strong>{finalStatus}</strong>
+              {t('simulator.finished') || '模拟结束'} — {t('simulator.finalStatus') || '最终状态'}: <strong>{finalStatus}</strong>
             </div>
           )}
         </div>
@@ -315,6 +373,7 @@ export default function ProcessSimulator() {
             allNodeIds={allNodeIds}
             unvisitedNodeIds={unvisitedNodeIds}
             coveragePercent={coveragePercent}
+            nodes={definition?.nodes}
           />
         </div>
       </div>

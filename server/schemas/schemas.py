@@ -10,19 +10,24 @@ class FieldValidation(BaseModel):
     rule: str  # "required", "maxLength", "regex", "range"
     value: Optional[str | int | float | bool] = None
     message: Optional[str] = None
+    message_i18n: Optional[dict[str, str]] = None
 
 
 class FieldDefinition(BaseModel):
     fieldId: str
     type: str  # "text", "dropdown", "date"
     label: str
+    label_i18n: Optional[dict[str, str]] = None
     placeholder: Optional[str] = None
+    placeholder_i18n: Optional[dict[str, str]] = None
     options: Optional[list[str]] = None
+    options_i18n: Optional[dict[str, list[str]]] = None
     validations: list[FieldValidation] = []
 
 
 class FormSchema(BaseModel):
     fields: list[FieldDefinition]
+    supported_locales: list[str] = ["zh"]
 
 
 class FormDefinitionCreate(BaseModel):
@@ -42,6 +47,8 @@ class FormDefinitionResponse(BaseModel):
 class ProcessNode(BaseModel):
     id: str
     type: str  # "start", "approval", "condition", "end"
+    name: Optional[str] = None
+    name_i18n: Optional[dict[str, str]] = None
     assignee: Optional[str] = None
     sla_hours: Optional[float] = None
 

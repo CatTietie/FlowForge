@@ -1,4 +1,6 @@
 import React from 'react'
+import { resolveNodeName } from '../i18n/resolveI18n'
+import { useLocale } from '../i18n/LocaleContext'
 
 function getNodeIcon(type) {
   switch (type) {
@@ -10,8 +12,8 @@ function getNodeIcon(type) {
   }
 }
 
-function getNodeLabel(node) {
-  let label = node.id
+function getNodeLabel(node, locale) {
+  let label = resolveNodeName(node, locale)
   if (node.assignee) label += ` (${node.assignee})`
   return label
 }
@@ -35,7 +37,6 @@ function topologicalSort(nodes, edges) {
     })
   }
 
-  // Add any remaining nodes not reached (disconnected)
   nodes.forEach(n => {
     if (!sorted.includes(n.id)) sorted.push(n.id)
   })
@@ -44,6 +45,8 @@ function topologicalSort(nodes, edges) {
 }
 
 export default function SimulationFlowChart({ definition, steps, visitedNodeIds, waitingNodeId }) {
+  const { locale } = useLocale()
+
   if (!definition) return null
 
   const { nodes, edges } = definition
@@ -78,7 +81,7 @@ export default function SimulationFlowChart({ definition, steps, visitedNodeIds,
           <div key={node.id}>
             <div className={nodeClass}>
               <span className="sim-node-icon">{getNodeIcon(node.type)}</span>
-              <span className="sim-node-label">{getNodeLabel(node)}</span>
+              <span className="sim-node-label">{getNodeLabel(node, locale)}</span>
               <span className="sim-node-type">{node.type}</span>
             </div>
 
